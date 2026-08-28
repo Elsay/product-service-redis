@@ -16,6 +16,7 @@ spring:
       hibernate.hibernate.jdbc.batch_size: 100
       hibernate.hibernate.default_schema: public
     open-in-view: false
+    show-sql: true
 
   data:
     redis:

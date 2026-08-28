@@ -56,7 +56,7 @@ public class ManualCachingProductService implements ProductService {
 
     @Override
     public ProductEntity update(Long id, ProductUpdateRequest updateRequest) {
-        log.info("Updating product in DB: id={}", id);
+        log.info("Updating product in DB: {}", id);
 
         ProductEntity product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found: id=" + id));
@@ -68,26 +68,27 @@ public class ManualCachingProductService implements ProductService {
         if (updateRequest.description() != null) {
             product.setDescription(updateRequest.description());
         }
-        ProductEntity savedProduct = productRepository.save(product);
 
         String cacheKey = CACHE_KEY_PREFIX + id;
         redisTemplate.delete(cacheKey);
-        log.info("Cache invalidated for updated product: id={}", id);
+        log.info("Cache invalidated for product being updated: id={}", id);
 
-        return savedProduct;
+        log.info("Updating product in DB: id={}", id);
+        return productRepository.save(product);
     }
 
     @Override
     public void delete(Long id) {
-        log.info("Deleting product from DB: id={}", id);
         if (!productRepository.existsById(id)) {
-            throw new EntityNotFoundException("Product not found: id={}" + id);
+            throw new EntityNotFoundException("Product not found: id=" + id);
         }
-        productRepository.deleteById(id);
 
         String cacheKey = CACHE_KEY_PREFIX + id;
         redisTemplate.delete(cacheKey);
-        log.info("Cache invalidated for deleted product: id={}", id);
+        log.info("Cache invalidated for product being deleted: id={}", id);
+
+        log.info("Deleting product from DB: id={}", id);
+        productRepository.deleteById(id);
     }
 
 }

@@ -8,14 +8,20 @@ import com.example.product_service_redis.domain.db.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class DbProductService implements ProductService {
+public class ManualCachingProductService implements ProductService {
 
     private final ProductRepository productRepository;
+    private final StringRedisTemplate stringRedisTemplate;
+    private final ObjectMapper objectMapper;
+
+    private static final String CACHE_KEY_PREFIX = "product:";
 
     @Override
     public ProductEntity create(ProductCreateRequest createRequest) {
@@ -30,9 +36,24 @@ public class DbProductService implements ProductService {
 
     @Override
     public ProductEntity getById(Long id) {
-        log.info("Getting product from DB: id={}", id);
-        return productRepository.findById(id)
+        log.info("Getting product: id={}", id);
+        var cacheKey = CACHE_KEY_PREFIX + id;
+
+        String objectFromCache = stringRedisTemplate.opsForValue().get(cacheKey);
+
+        if (objectFromCache != null) {
+            log.info("Product found in cache: id={}", id);
+            return objectMapper.readValue(objectFromCache, ProductEntity.class);
+        }
+
+        log.info("Product not found in cache: id={}", id);
+        ProductEntity entityFromDb = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found: " + id));
+
+        stringRedisTemplate.opsForValue().set(cacheKey, objectMapper.writeValueAsString(entityFromDb));
+        log.info("Product cached: id={}", id);
+
+        return entityFromDb;
     }
 
     @Override
@@ -57,4 +78,5 @@ public class DbProductService implements ProductService {
         log.info("Deleting product {} in DB", id);
         productRepository.deleteById(id);
     }
+
 }

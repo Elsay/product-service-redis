@@ -17,6 +17,11 @@ spring:
       hibernate.hibernate.default_schema: public
     open-in-view: false
 
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+
   web:
     error:
       include-stacktrace: never

@@ -1,8 +1,10 @@
 package com.example.product_service_redis.api;
 
+import com.example.product_service_redis.domain.CacheMode;
 import com.example.product_service_redis.domain.ProductService;
 import com.example.product_service_redis.domain.db.ProductEntity;
 import com.example.product_service_redis.domain.service.DbProductService;
+import com.example.product_service_redis.domain.service.ManualCachingProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -15,16 +17,20 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class ProductController {
 
-    private final ProductService dbProductService;
+    private final DbProductService dbProductService;
+    private final ManualCachingProductService manualCachingProductService;
     private final ProductDtoMapper mapper;
 
     @PostMapping
     public ResponseEntity<ProductDto> create(
-            @RequestBody ProductCreateRequest request
+            @RequestBody ProductCreateRequest request,
+            @RequestParam(value = "cacheMode", defaultValue = "NONE_CACHE") CacheMode cacheMode
     ) {
-        log.info("Creating product with cacheMode={}", "none-cache");
+        log.info("Creating product with cacheMode={}", cacheMode);
 
-        ProductEntity productEntity = dbProductService.create(request);
+        ProductService service = resolveProductService(cacheMode);
+
+        ProductEntity productEntity = service.create(request);
         ProductDto productDto = mapper.toProductDto(productEntity);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(productDto);
@@ -32,11 +38,14 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ProductDto> getById(
-            @PathVariable Long id
+            @PathVariable Long id,
+            @RequestParam(value = "cacheMode", defaultValue = "NONE_CACHE") CacheMode cacheMode
     ) {
-        log.info("Getting product {} with cacheMode={} ", id, "none-cache");
+        log.info("Getting product {} with cacheMode={} ", id, cacheMode);
 
-        ProductEntity productEntity = dbProductService.getById(id);
+        ProductService service = resolveProductService(cacheMode);
+
+        ProductEntity productEntity = service.getById(id);
         ProductDto productDto = mapper.toProductDto(productEntity);
 
         return ResponseEntity.ok(productDto);
@@ -45,11 +54,14 @@ public class ProductController {
     @PutMapping("/{id}")
     public ResponseEntity<ProductDto> update(
             @PathVariable Long id,
-            @RequestBody ProductUpdateRequest request
+            @RequestBody ProductUpdateRequest request,
+            @RequestParam(value = "cacheMode", defaultValue = "NONE_CACHE") CacheMode cacheMode
     ) {
-        log.info("Updating product {} with cacheMode={}", id, "none-cache");
+        log.info("Updating product {} with cacheMode={}", id, cacheMode);
 
-        ProductEntity productEntity = dbProductService.update(id, request);
+        ProductService service = resolveProductService(cacheMode);
+
+        ProductEntity productEntity = service.update(id, request);
         ProductDto productDto = mapper.toProductDto(productEntity);
 
         return ResponseEntity.ok(productDto);
@@ -57,11 +69,21 @@ public class ProductController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
-            @PathVariable Long id
+            @PathVariable Long id,
+            @RequestParam(value = "cacheMode", defaultValue = "NONE_CACHE") CacheMode cacheMode
     ) {
-        log.info("Deleting product {} with cacheMode={}", id, "none-cache");
+        log.info("Deleting product {} with cacheMode={}", id, cacheMode);
 
-        dbProductService.delete(id);
+        ProductService service = resolveProductService(cacheMode);
+
+        service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private ProductService resolveProductService(CacheMode cacheMode) {
+        return switch (cacheMode) {
+            case NONE_CACHE -> dbProductService;
+            case MANUAL -> manualCachingProductService;
+        };
     }
 }

@@ -86,4 +86,5 @@ public class ProductController {
             case MANUAL -> manualCachingProductService;
         };
     }
+
 }

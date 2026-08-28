@@ -16,4 +16,5 @@ class ProductDtoMapper {
                 productEntity.getUpdatedAt()
         );
     }
+
 }

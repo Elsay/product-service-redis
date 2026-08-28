@@ -19,7 +19,7 @@ public class DbProductService implements ProductService {
 
     @Override
     public ProductEntity create(ProductCreateRequest createRequest) {
-        log.info("Creating product in DB: {}", createRequest);
+        log.info("Creating product in DB: {}", createRequest.name());
         ProductEntity product = ProductEntity.builder()
                 .name(createRequest.name())
                 .price(createRequest.price())
@@ -37,7 +37,7 @@ public class DbProductService implements ProductService {
 
     @Override
     public ProductEntity update(Long id, ProductUpdateRequest updateRequest) {
-        log.info("Updating product in DB: {}", id);
+        log.info("Updating product in DB: id={}", id);
 
         ProductEntity product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
@@ -54,7 +54,11 @@ public class DbProductService implements ProductService {
 
     @Override
     public void delete(Long id) {
-        log.info("Deleting product {} in DB", id);
+        log.info("Deleting product from DB: id={}", id);
+        if (!productRepository.existsById(id)) {
+            throw new EntityNotFoundException("Product not found: id={}" + id);
+        }
         productRepository.deleteById(id);
     }
+
 }

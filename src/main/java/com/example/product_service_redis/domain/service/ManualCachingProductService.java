@@ -8,9 +8,8 @@ import com.example.product_service_redis.domain.db.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Service
@@ -18,14 +17,13 @@ import tools.jackson.databind.ObjectMapper;
 public class ManualCachingProductService implements ProductService {
 
     private final ProductRepository productRepository;
-    private final StringRedisTemplate stringRedisTemplate;
-    private final ObjectMapper objectMapper;
+    private final RedisTemplate<String, ProductEntity> redisTemplate;
 
     private static final String CACHE_KEY_PREFIX = "product:";
 
     @Override
     public ProductEntity create(ProductCreateRequest createRequest) {
-        log.info("Creating product in DB: {}", createRequest);
+        log.info("Creating product in DB: {}", createRequest.name());
         ProductEntity product = ProductEntity.builder()
                 .name(createRequest.name())
                 .price(createRequest.price())
@@ -37,31 +35,31 @@ public class ManualCachingProductService implements ProductService {
     @Override
     public ProductEntity getById(Long id) {
         log.info("Getting product: id={}", id);
-        var cacheKey = CACHE_KEY_PREFIX + id;
+        String cacheKey = CACHE_KEY_PREFIX + id;
 
-        String objectFromCache = stringRedisTemplate.opsForValue().get(cacheKey);
+        ProductEntity productFromCache = redisTemplate.opsForValue().get(cacheKey);
 
-        if (objectFromCache != null) {
+        if (productFromCache != null) {
             log.info("Product found in cache: id={}", id);
-            return objectMapper.readValue(objectFromCache, ProductEntity.class);
+            return productFromCache;
         }
 
         log.info("Product not found in cache: id={}", id);
-        ProductEntity entityFromDb = productRepository.findById(id)
+        ProductEntity productFromDb = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found: " + id));
 
-        stringRedisTemplate.opsForValue().set(cacheKey, objectMapper.writeValueAsString(entityFromDb));
+        redisTemplate.opsForValue().set(cacheKey, productFromDb);
         log.info("Product cached: id={}", id);
 
-        return entityFromDb;
+        return productFromDb;
     }
 
     @Override
     public ProductEntity update(Long id, ProductUpdateRequest updateRequest) {
-        log.info("Updating product in DB: {}", id);
+        log.info("Updating product in DB: id={}", id);
 
         ProductEntity product = productRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Product not found: id=" + id));
 
         if (updateRequest.price() != null) {
             product.setPrice(updateRequest.price());
@@ -70,13 +68,26 @@ public class ManualCachingProductService implements ProductService {
         if (updateRequest.description() != null) {
             product.setDescription(updateRequest.description());
         }
-        return productRepository.save(product);
+        ProductEntity savedProduct = productRepository.save(product);
+
+        String cacheKey = CACHE_KEY_PREFIX + id;
+        redisTemplate.delete(cacheKey);
+        log.info("Cache invalidated for updated product: id={}", id);
+
+        return savedProduct;
     }
 
     @Override
     public void delete(Long id) {
-        log.info("Deleting product {} in DB", id);
+        log.info("Deleting product from DB: id={}", id);
+        if (!productRepository.existsById(id)) {
+            throw new EntityNotFoundException("Product not found: id={}" + id);
+        }
         productRepository.deleteById(id);
+
+        String cacheKey = CACHE_KEY_PREFIX + id;
+        redisTemplate.delete(cacheKey);
+        log.info("Cache invalidated for deleted product: id={}", id);
     }
 
 }

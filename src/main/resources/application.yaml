@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: product-service-redis
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 20
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate.hibernate.jdbc.batch_size: 100
+      hibernate.hibernate.default_schema: public
+    open-in-view: false
+
+  web:
+    error:
+      include-stacktrace: never
+      include-message: always

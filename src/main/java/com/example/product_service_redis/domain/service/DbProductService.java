@@ -37,7 +37,7 @@ public class DbProductService implements ProductService {
 
     @Override
     public ProductEntity update(Long id, ProductUpdateRequest updateRequest) {
-        log.info("Updating product in DB: {}", id);
+        log.info("Updating product in DB: id={}", id);
 
         ProductEntity product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));

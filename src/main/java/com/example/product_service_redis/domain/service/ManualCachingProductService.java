@@ -56,8 +56,6 @@ public class ManualCachingProductService implements ProductService {
 
     @Override
     public ProductEntity update(Long id, ProductUpdateRequest updateRequest) {
-        log.info("Updating product in DB: {}", id);
-
         ProductEntity product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found: id=" + id));
 

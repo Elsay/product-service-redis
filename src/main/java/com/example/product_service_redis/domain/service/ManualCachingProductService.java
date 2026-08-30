@@ -9,7 +9,10 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.types.Expiration;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -20,6 +23,7 @@ public class ManualCachingProductService implements ProductService {
     private final RedisTemplate<String, ProductEntity> redisTemplate;
 
     private static final String CACHE_KEY_PREFIX = "product:";
+    private static final long CACHE_TTL_MINUTES = 10;
 
     @Override
     public ProductEntity create(ProductCreateRequest createRequest) {
@@ -48,7 +52,7 @@ public class ManualCachingProductService implements ProductService {
         ProductEntity productFromDb = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found: " + id));
 
-        redisTemplate.opsForValue().set(cacheKey, productFromDb);
+        redisTemplate.opsForValue().set(cacheKey, productFromDb, Expiration.from(CACHE_TTL_MINUTES, TimeUnit.MINUTES));
         log.info("Product cached: id={}", id);
 
         return productFromDb;

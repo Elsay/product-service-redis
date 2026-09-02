@@ -5,6 +5,7 @@ import com.example.product_service_redis.domain.ProductService;
 import com.example.product_service_redis.domain.db.ProductEntity;
 import com.example.product_service_redis.domain.service.DbProductService;
 import com.example.product_service_redis.domain.service.ManualCachingProductService;
+import com.example.product_service_redis.domain.service.SpringAnnotationProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ public class ProductController {
 
     private final DbProductService dbProductService;
     private final ManualCachingProductService manualCachingProductService;
+    private final SpringAnnotationProductService springAnnotationProductService;
     private final ProductDtoMapper mapper;
 
     @PostMapping
@@ -84,6 +86,7 @@ public class ProductController {
         return switch (cacheMode) {
             case NONE_CACHE -> dbProductService;
             case MANUAL -> manualCachingProductService;
+            case SPRING -> springAnnotationProductService;
         };
     }
 
